@@ -38,6 +38,14 @@ public class MouseDrawer : MonoBehaviour
 
     public int Resolution => _resolution;
 
+    public bool IsLineCursorVisible
+    {
+        get => _cursor.gameObject.activeSelf;
+        set => _cursor.gameObject.SetActive(value);
+    }
+
+    public bool IsInputEnabled { get; set; }
+
     private void Awake()
     {
         Cursor.visible = false;
@@ -77,6 +85,8 @@ public class MouseDrawer : MonoBehaviour
 
     private void Update()
     {
+        if (!IsInputEnabled) return;
+
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
             Clear();
@@ -102,8 +112,6 @@ public class MouseDrawer : MonoBehaviour
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            Cursor.visible = false;
-
             _tempLineRenderer.SetPosition(0, mousePositionWorld);
             Debug.Log($"mouse pressed: {mousePositionWorld}");
         }
