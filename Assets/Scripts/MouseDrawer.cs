@@ -13,12 +13,19 @@ public class MouseDrawer : MonoBehaviour
     // 2560x1440: [18,     36, 45,     72, 90,           144, 180]
     // 3840x2160: [18, 27, 36, 45, 54, 72, 90, 108, 135, 144, 180, 216]
 
-    [SerializeField] private int _resolution = 36; // vertical units, assume 16:9 screen
+    // 800x600:   [24, 30, 60, 75, 120, 150]
+
+    [SerializeField] private int _resolution = 36; // vertical units
     private int _unitHeight;
 
     [SerializeField] private int _initialLineCount = 8;
     [SerializeField] private float _lineWidth = 0.01f;
     [SerializeField] private float _tolerance = 0.01f;
+
+    // [SerializeField] private Vector2 _clamp = new Vector2(9.6f, 7.2f);
+    [SerializeField] private float _clamp = 0.1f;
+    private Vector2 _clampMin;
+    private Vector2 _clampMax;
 
     [SerializeField] private Material _lineMaterial;
     [SerializeField] private List<LineRenderer> _lineRenderers;
@@ -40,6 +47,10 @@ public class MouseDrawer : MonoBehaviour
 
         _camera = Camera.main;
         _unitHeight = Screen.height / _resolution;
+
+        // clamp=0.1f -> screen [0.1-0.9] of the actual values
+        _clampMin = new Vector2(Screen.width * _clamp, Screen.height * _clamp);
+        _clampMax = new Vector2(Screen.width * (1f - _clamp), Screen.height * (1f - _clamp));
     }
 
     private void InitializeLineRenderers()
@@ -86,8 +97,16 @@ public class MouseDrawer : MonoBehaviour
         var mousePositionWorld = GetMousePositionWorldGrid(_unitHeight);
         _cursor.position = mousePositionWorld;
 
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            Debug.Log($"mouse position (world): {mousePositionWorld}; actual: {Mouse.current.position.value}");
+            return;
+        }
+
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
+            Cursor.visible = false;
+
             _currentLineStart = mousePositionWorld;
             lineRenderer.SetPosition(0, mousePositionWorld);
             Debug.Log($"mouse pressed: {mousePositionWorld}");
@@ -249,6 +268,9 @@ public class MouseDrawer : MonoBehaviour
     private Vector2 GetMousePositionWorldGrid(int roundTo = 0)
     {
         var mouseScreenPosition = Mouse.current.position.ReadValue();
+        mouseScreenPosition.x = Mathf.Clamp(mouseScreenPosition.x, _clampMin.x, _clampMax.x);
+        mouseScreenPosition.y = Mathf.Clamp(mouseScreenPosition.y, _clampMin.y, _clampMax.y);
+
         if (roundTo > 0)
         {
             // 432.1 -> 430
@@ -258,7 +280,10 @@ public class MouseDrawer : MonoBehaviour
             mouseScreenPosition = new Vector2(x, y);
         }
 
-        return _camera.ScreenToWorldPoint(mouseScreenPosition);
+        var mousePositionWorldGrid = _camera.ScreenToWorldPoint(mouseScreenPosition);
+        // mousePositionWorldGrid.x = Mathf.Clamp(mousePositionWorldGrid.x, -_clamp.x, _clamp.x);
+        // mousePositionWorldGrid.y = Mathf.Clamp(mousePositionWorldGrid.y, -_clamp.y, _clamp.y);
+        return mousePositionWorldGrid;
     }
 
     private void Clear()
