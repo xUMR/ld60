@@ -28,14 +28,13 @@ public class MouseDrawer : MonoBehaviour
     private Vector2 _clampMax;
 
     [SerializeField] private Material _lineMaterial;
+    [SerializeField] private LineRenderer _tempLineRenderer;
     [SerializeField] private List<LineRenderer> _lineRenderers;
     [SerializeField] private Transform _cursor;
 
+    private List<Vector3[]> _linePoints;
     private int _rendererIndex;
     private Camera _camera;
-
-    private Vector2 _currentLineStart;
-    private Vector2 _currentLineEnd;
 
     public int Resolution => _resolution;
 
@@ -55,13 +54,18 @@ public class MouseDrawer : MonoBehaviour
 
     private void InitializeLineRenderers()
     {
+        _linePoints = new List<Vector3[]>(_initialLineCount);
         _lineRenderers = new List<LineRenderer>(_initialLineCount);
         for (var i = 0; i < _initialLineCount; i++)
         {
             var go = new GameObject($"Line {i}");
             go.transform.SetParent(transform);
+
+            _linePoints.Add(new Vector3[256]);
+
             var lineRenderer = go.AddComponent<LineRenderer>();
             lineRenderer.positionCount = 2;
+            lineRenderer.SetPositions(_linePoints[i]);
             lineRenderer.sharedMaterial = _lineMaterial;
             lineRenderer.startWidth = _lineWidth;
             lineRenderer.endWidth = _lineWidth;
@@ -87,13 +91,6 @@ public class MouseDrawer : MonoBehaviour
             _rendererIndex = index;
         }
 
-        var lineRenderer = _lineRenderers[_rendererIndex];
-        if (lineRenderer == null)
-        {
-            Debug.LogError("No line renderer available.");
-            return;
-        }
-
         var mousePositionWorld = GetMousePositionWorldGrid(_unitHeight);
         _cursor.position = mousePositionWorld;
 
@@ -107,47 +104,49 @@ public class MouseDrawer : MonoBehaviour
         {
             Cursor.visible = false;
 
-            _currentLineStart = mousePositionWorld;
-            lineRenderer.SetPosition(0, mousePositionWorld);
+            _tempLineRenderer.SetPosition(0, mousePositionWorld);
             Debug.Log($"mouse pressed: {mousePositionWorld}");
         }
 
         if (Mouse.current.leftButton.isPressed)
         {
-            lineRenderer.SetPosition(1, mousePositionWorld);
+            _tempLineRenderer.SetPosition(1, mousePositionWorld);
         }
 
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
-            _currentLineEnd = mousePositionWorld;
             Debug.Log($"mouse relased: {mousePositionWorld}");
 
-            if (IsLineRendererValid(lineRenderer))
+            if (IsLineRendererValid(_tempLineRenderer))
             {
                 Debug.Log($"created line.");
 
-                var currentLineStart = _currentLineStart;
-                var currentLineEnd = _currentLineEnd;
-                var isNewLine = ProcessNewLine(lineRenderer, currentLineStart, currentLineEnd);
+                var isNewLine = ProcessNewLine(_tempLineRenderer);
                 if (isNewLine)
                 {
+                    var lineRenderer = _lineRenderers[_rendererIndex];
+                    lineRenderer.SetPosition(0, _tempLineRenderer.GetPosition(0));
+                    lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
                     _rendererIndex++;
                 }
                 else
                 {
-                    ResetLineRenderer(lineRenderer);
+                    ResetLineRenderer(_tempLineRenderer);
                 }
-
-                _currentLineStart = Vector2.zero;
             }
         }
     }
 
     // return true if it's a new line, false otherwise
-    private bool ProcessNewLine(LineRenderer lineRenderer, Vector2 currentLineStart, Vector2 currentLineEnd)
+    private bool ProcessNewLine(LineRenderer lineRenderer)
     {
+        var currentLineStart = lineRenderer.GetPosition(0);
+        var currentLineEnd = lineRenderer.GetPosition(1);
+
         // todo: check if the new line can be made just by moving a point in an old line
         // (starts or ends at a point between the two points of an old line)
+
+        // todo: try to combine if lines with multiple points can be combined?
 
         // check if the new line forms a loop with an old line
         var lineRendererToLoop = GetLineRendererToLoop(currentLineStart, currentLineEnd);
