@@ -27,7 +27,7 @@ public class LevelLoader : MonoBehaviour
         var levelData = JsonUtility.FromJson<LevelData>(levelAsset.text);
 
         _lineLoader.Clear();
-        if (levelData.AuxLineData != null && levelData.AuxLineData.Points != null)
+        if (levelData.AuxLineData is { Points: { Count: > 0 } })
         {
             _lineLoader.LoadLine(levelData.AuxLineData);
         }
@@ -47,7 +47,6 @@ public class LevelLoader : MonoBehaviour
 
         var expectedLineData = _loadedLevelData.LineData;
 
-        // held together by actual tape
         var actualMatchesExpected = actualLineData.Matches(expectedLineData);
         var expectedMatchesActual = expectedLineData.Matches(actualLineData);
 

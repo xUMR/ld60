@@ -1831,7 +1831,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1767755447
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2052,6 +2052,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78b3e0c29da245709dfd01c3fa6b7d43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameDirector
+  _levelCollection: {fileID: 11400000, guid: 4b5c24e43adbdc840a11940b4f7a9a84, type: 2}
   _levelLoader: {fileID: 1627506394}
   _mouseDrawer: {fileID: 1530419817}
   _textDrawer: {fileID: 1964868987}

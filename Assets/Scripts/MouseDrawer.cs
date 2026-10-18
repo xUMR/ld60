@@ -58,7 +58,7 @@ public class MouseDrawer : MonoBehaviour
         set => _cursor.gameObject.SetActive(value);
     }
 
-    public bool IsInputEnabled => _inputListener.InputEnabled;
+    public InputState CurrentInputState => _inputListener.CurrentInputState;
 
     public LineRenderer MainRenderer => _lineRenderers[0];
 
@@ -119,7 +119,7 @@ public class MouseDrawer : MonoBehaviour
 
     private void Update()
     {
-        if (!IsInputEnabled) return;
+        if (CurrentInputState != InputState.Enabled) return;
 
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
@@ -188,10 +188,7 @@ public class MouseDrawer : MonoBehaviour
 
             if (IsLineRendererValid(_tempLineRenderer))
             {
-                _undoStates[_undoIndex].Record(MainRenderer);
-
-                _undoIndex = (_undoIndex + 1) % MaxUndoCount;
-                _undoCount = Mathf.Min(_undoCount + 1, MaxUndoCount);
+                var willRecordUndo = false;
 
                 // _undoState.Read(MainRenderer);
                 Debug.Log($"created line.");
@@ -205,6 +202,8 @@ public class MouseDrawer : MonoBehaviour
                         lineRenderer.SetPosition(0, _tempLineRenderer.GetPosition(0));
                         lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
 
+                        willRecordUndo = true;
+
                         // force single line
                         // _rendererIndex++;
                     }
@@ -212,6 +211,19 @@ public class MouseDrawer : MonoBehaviour
                     {
                         Debug.LogWarning("NEW LINE NOT ALLOWED.");
                     }
+                }
+                else
+                {
+                    willRecordUndo = true;
+                }
+
+                if (willRecordUndo)
+                {
+                    _undoIndex = (_undoIndex + 1) % MaxUndoCount;
+                    _undoCount = Mathf.Min(_undoCount + 1, MaxUndoCount);
+
+                    _undoStates[_undoIndex].Record(MainRenderer);
+                    Debug.Log("Undo recorded.");
                 }
 
                 ResetLineRenderer(_tempLineRenderer);
@@ -380,6 +392,8 @@ public class MouseDrawer : MonoBehaviour
         // IsNewLineAllowed = true;
         // _undoState.Reset();
 
+        _undoIndex = 0;
+        _undoCount = 0;
         foreach (var undoState in _undoStates)
         {
             undoState.Reset();

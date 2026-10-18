@@ -90,21 +90,4 @@ public class LineLoader : MonoBehaviour
         _jsonToLoad = json;
         Debug.Log(json);
     }
-
-    [ContextMenu("CheckMatch")]
-    private void CheckMatch()
-    {
-        var actualRenderer =
-            FindAnyObjectByType<MouseDrawer>()
-                .transform.GetChild(1)
-                .GetComponentInChildren<LineRenderer>();
-
-        var expectedRenderer = GetComponentInChildren<LineRenderer>();
-
-        var actualLineData = _lineSerializer.GetLineData(actualRenderer, _camera, _screenData);
-        var expectedLineData = _lineSerializer.GetLineData(expectedRenderer, _camera, _screenData);
-
-        Debug.Log($"actual matches expected: {actualLineData.Matches(expectedLineData)}");
-        Debug.Log($"expected matches actual: {expectedLineData.Matches(actualLineData)}");
-    }
 }

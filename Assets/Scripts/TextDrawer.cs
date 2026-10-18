@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using TMPro;
 using UnityEngine;
 
@@ -11,6 +12,13 @@ public class TextDrawer : MonoBehaviour
     [SerializeField] private string _revealTextDebug;
 
     private CancellationTokenSource _cts;
+
+    public bool IsBusy { get;  private set; }
+
+    private void OnDestroy()
+    {
+        _cts?.Dispose();
+    }
 
     public void ClearText()
     {
@@ -57,10 +65,12 @@ public class TextDrawer : MonoBehaviour
     private void CancelCurrentRevealTask()
     {
         _cts?.Cancel();
+        IsBusy = false;
     }
 
     private async Awaitable RevealTextAsync(float duration = 0)
     {
+        IsBusy = true;
         _tmpText.maxVisibleCharacters = 0;
 
         if (!string.IsNullOrEmpty(_revealTextDebug))
@@ -68,16 +78,29 @@ public class TextDrawer : MonoBehaviour
             _tmpText.text = _revealTextDebug;
         }
 
-        var textLength = _tmpText.text.Length;
-        duration = duration > 0 ? duration : textLength * _revealDurationPerChar;
-        for (var t = 0f; t < 1; t += Time.deltaTime / duration)
+        try
         {
-            var visibleCharacterCount = Mathf.RoundToInt(Mathf.Lerp(0, textLength, t));
-            _tmpText.maxVisibleCharacters = visibleCharacterCount;
+            var textLength = _tmpText.text.Length;
+            duration = duration > 0 ? duration : textLength * _revealDurationPerChar;
+            for (var t = 0f; t < 1; t += Time.deltaTime / duration)
+            {
+                var visibleCharacterCount = Mathf.RoundToInt(Mathf.Lerp(0, textLength, t));
+                _tmpText.maxVisibleCharacters = visibleCharacterCount;
 
-            await Awaitable.NextFrameAsync();
+                await Awaitable.NextFrameAsync(_cts.Token);
+            }
         }
+        catch (OperationCanceledException) { } // expected
+        finally
+        {
+            _tmpText.maxVisibleCharacters = _tmpText.text.Length;
+            IsBusy = false;
+        }
+    }
 
+    public void ProceedReveal()
+    {
+        CancelCurrentRevealTask();
         _tmpText.maxVisibleCharacters = _tmpText.text.Length;
     }
 }

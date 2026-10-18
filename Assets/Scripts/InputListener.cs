@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 public sealed class InputListener : MonoBehaviour
 {
-    public bool InputEnabled { get; private set; } = true;
+    public InputState CurrentInputState { get; private set; } = InputState.Enabled;
 
     private void Start()
     {
@@ -15,18 +15,25 @@ public sealed class InputListener : MonoBehaviour
         GameEvents.InputStateChangeRequested -= HandleInputStateChangeRequested;
     }
 
-    private void HandleInputStateChangeRequested(bool isEnabled)
+    private void HandleInputStateChangeRequested(InputState state)
     {
-        InputEnabled = isEnabled;
+        CurrentInputState = state;
     }
 
     // todo use input system instead of polling for input
     private void Update()
     {
-        if (!InputEnabled)
+        if (CurrentInputState == InputState.Disabled)
             return;
 
         var keyboard = Keyboard.current;
+        if (CurrentInputState == InputState.AnyKeyToProceed && keyboard.anyKey.wasPressedThisFrame)
+        {
+            GameEvents.Invoke.AnyKeyPressed();
+        }
+
+        if (CurrentInputState != InputState.Enabled)
+            return;
 
         if (keyboard.bKey.wasPressedThisFrame)
         {
