@@ -8,6 +8,8 @@ public sealed class GameData : ScriptableObject
     [SerializeField] private GameObject _pointPrefab;
 
     private ScreenData _defaultScreenData;
+    private Camera _defaultCamera;
+    private LineSerializer _defaultLineSerializer;
 
     public int Resolution => _resolution;
 
@@ -16,6 +18,21 @@ public sealed class GameData : ScriptableObject
             GetClampMin(Screen.width, Screen.height),
             GetClampMax(Screen.width, Screen.height),
             GetUnitHeight(Screen.height));
+
+    public Camera DefaultCamera
+    {
+        get
+        {
+            // camera is a unity object so don't use ??= check
+            if (_defaultCamera == null)
+            {
+                _defaultCamera = Camera.main;
+            }
+            return _defaultCamera;
+        }
+    }
+
+    public LineSerializer DefaultLineSerializer => _defaultLineSerializer ??= new LineSerializer();
 
     public GameObject PointPrefab => _pointPrefab;
 

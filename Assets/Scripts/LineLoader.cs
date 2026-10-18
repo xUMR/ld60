@@ -4,9 +4,10 @@ using UnityEngine.Assertions;
 public class LineLoader : MonoBehaviour
 {
     [SerializeField] private GameData _gameData;
-
     [SerializeField] private string _jsonToLoad;
     [SerializeField] private LineRenderer _lineRenderer;
+
+    [SerializeField] private Transform _pointsParent;
 
     private Camera _camera;
     private LineSerializer _lineSerializer;
@@ -27,6 +28,15 @@ public class LineLoader : MonoBehaviour
         Assert.IsFalse(string.IsNullOrEmpty(_jsonToLoad));
 
         var lineData = _lineSerializer.FromJson(_jsonToLoad);
+        LoadLine(lineData);
+    }
+
+    public void LoadLine(LineData lineData)
+    {
+        Assert.IsNotNull(lineData);
+        Assert.IsNotNull(lineData.Points);
+        Assert.IsTrue(lineData.Points.Count > 0);
+
         _lineSerializer.BuildLine(lineData, _camera, _lineRenderer, _screenData);
     }
 
@@ -36,11 +46,38 @@ public class LineLoader : MonoBehaviour
         Assert.IsFalse(string.IsNullOrEmpty(_jsonToLoad));
 
         var lineData = _lineSerializer.FromJson(_jsonToLoad);
-        foreach (var lineDataPoint in lineData.Points)
+        LoadPoints(lineData);
+    }
+
+    public void LoadPoints(LineData lineData, int count = 0)
+    {
+        var iterations = count <= 0
+            ? lineData.Points.Count
+            : Mathf.Min(count, lineData.Points.Count);
+
+        for (var i = 0; i < iterations; i++)
         {
+            var lineDataPoint = lineData.Points[i];
             var position = _lineSerializer.PointToWorld(lineDataPoint, _camera, _screenData);
-            Instantiate(_gameData.PointPrefab, position, Quaternion.identity);
+            Instantiate(_gameData.PointPrefab, position, Quaternion.identity, new InstantiateParameters
+            {
+                parent = _pointsParent
+            });
         }
+    }
+
+    public void ClearPoints()
+    {
+        for (var i = 0; i < _pointsParent.childCount; i++)
+        {
+            Destroy(_pointsParent.GetChild(i).gameObject);
+        }
+    }
+
+    public void Clear()
+    {
+        ClearPoints();
+        _lineRenderer.positionCount = 0;
     }
 
     [ContextMenu("PrintJson")]
@@ -52,5 +89,22 @@ public class LineLoader : MonoBehaviour
         var json = _lineSerializer.ToJson(lineData);
         _jsonToLoad = json;
         Debug.Log(json);
+    }
+
+    [ContextMenu("CheckMatch")]
+    private void CheckMatch()
+    {
+        var actualRenderer =
+            FindAnyObjectByType<MouseDrawer>()
+                .transform.GetChild(1)
+                .GetComponentInChildren<LineRenderer>();
+
+        var expectedRenderer = GetComponentInChildren<LineRenderer>();
+
+        var actualLineData = _lineSerializer.GetLineData(actualRenderer, _camera, _screenData);
+        var expectedLineData = _lineSerializer.GetLineData(expectedRenderer, _camera, _screenData);
+
+        Debug.Log($"actual matches expected: {actualLineData.Matches(expectedLineData)}");
+        Debug.Log($"expected matches actual: {expectedLineData.Matches(actualLineData)}");
     }
 }

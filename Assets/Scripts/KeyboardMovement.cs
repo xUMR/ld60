@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.InputSystem;
 
 public sealed class KeyboardMovement : MonoBehaviour
@@ -12,22 +11,18 @@ public sealed class KeyboardMovement : MonoBehaviour
 
     private float _moveTimer;
     private Vector2 _input;
-    private Camera _camera;
     private Transform _cameraTransform;
     private float _timerMin;
 
     private void Awake()
     {
-        _camera = Camera.main;
-        Assert.IsNotNull(_camera);
-
-        _cameraTransform = _camera.transform;
+        _cameraTransform = _gameData.DefaultCamera.transform;
         _timerMin = -_throttle / 2;
     }
 
     private void Update()
     {
-        _speed = _camera.orthographicSize / _gameData.Resolution * 2;
+        _speed = _gameData.DefaultCamera.orthographicSize / _gameData.Resolution * 2;
         _input = GetWasdInput();
 
         if (_input == Vector2.zero)
@@ -39,10 +34,8 @@ public sealed class KeyboardMovement : MonoBehaviour
             _moveTimer = Mathf.Max(_timerMin, _moveTimer - Time.deltaTime);
             if (_moveTimer <= 0)
             {
-                MoveTargetTopDown(_target, _input);
+                MoveTargetTopDown(_target, -_input);
                 _moveTimer += _throttle;
-
-                Debug.Log($"Moved at {Time.realtimeSinceStartupAsDouble}");
             }
         }
 
@@ -53,11 +46,6 @@ public sealed class KeyboardMovement : MonoBehaviour
     }
 
     private void MoveTargetTopDown(Transform target, Vector2 input)
-    {
-        target.Translate(_speed * input);
-    }
-
-    private void MoveTargetSideScroll(Transform target, Vector2 input)
     {
         target.Translate(_speed * input);
     }

@@ -1,0 +1,12 @@
+﻿{
+  "Hint": "Hourglass",
+  "LineData": {
+    "IsLoop": true,
+    "Points": [
+      { "x": 14, "y": 14 },
+      { "x": 18, "y": 14 },
+      { "x": 14, "y": 10 },
+      { "x": 18, "y": 10 }
+    ]
+  }
+}

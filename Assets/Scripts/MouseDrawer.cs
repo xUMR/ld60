@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -34,10 +35,19 @@ public class MouseDrawer : MonoBehaviour
     [SerializeField] private List<LineRenderer> _lineRenderers;
     [SerializeField] private Transform _cursor;
 
-    private List<Vector3[]> _linePoints;
+    // private List<Vector3[]> _linePoints;
     private int _rendererIndex;
     private Camera _camera;
     private ScreenData _screenData;
+    // private UndoState _undoState;
+    private static readonly int MaxUndoCount = 32;
+    private UndoState[] _undoStates;
+    private int _undoIndex;
+    private int _undoCount; // remaining undo count
+
+    // force single line
+    private bool IsNewLineAllowed =>
+        MainRenderer.positionCount == 2 && MainRenderer.GetPosition(0) == MainRenderer.GetPosition(1);
 
     public int Resolution => _resolution;
 
@@ -48,6 +58,8 @@ public class MouseDrawer : MonoBehaviour
     }
 
     public bool IsInputEnabled { get; set; } = true;
+
+    public LineRenderer MainRenderer => _lineRenderers[0];
 
     private void Awake()
     {
@@ -63,22 +75,38 @@ public class MouseDrawer : MonoBehaviour
         _clampMax = _gameData.GetClampMax(Screen.width, Screen.height);
 
         _screenData = _gameData.DefaultScreenData;
+
+        _undoStates = new UndoState[MaxUndoCount];
+        for (var i = 0; i < _undoStates.Length; i++)
+        {
+            _undoStates[i] = new UndoState
+            {
+                PositionCount = 2,
+                Positions = Enumerable.Repeat(Vector3.zero, 2).ToList()
+            };
+        }
+
+        // _undoState = new UndoState
+        // {
+        //     PositionCount = 2,
+        //     Positions = Enumerable.Repeat(Vector3.zero, 64).ToList()
+        // };
     }
 
     private void InitializeLineRenderers()
     {
-        _linePoints = new List<Vector3[]>(_initialLineCount);
+        // _linePoints = new List<Vector3[]>(_initialLineCount);
         _lineRenderers = new List<LineRenderer>(_initialLineCount);
         for (var i = 0; i < _initialLineCount; i++)
         {
             var go = new GameObject($"Line {i}");
             go.transform.SetParent(transform);
 
-            _linePoints.Add(new Vector3[256]);
+            // _linePoints.Add(new Vector3[256]);
 
             var lineRenderer = go.AddComponent<LineRenderer>();
             lineRenderer.positionCount = 2;
-            lineRenderer.SetPositions(_linePoints[i]);
+            // lineRenderer.SetPositions(_linePoints[i]);
             lineRenderer.sharedMaterial = _lineMaterial;
             lineRenderer.startWidth = _lineWidth;
             lineRenderer.endWidth = _lineWidth;
@@ -98,6 +126,18 @@ public class MouseDrawer : MonoBehaviour
             return;
         }
 
+        if (Keyboard.current.zKey.wasPressedThisFrame && _undoCount > 0)
+        {
+            _undoIndex = (_undoIndex - 1 + MaxUndoCount) % MaxUndoCount;
+            _undoCount = Mathf.Max(0, _undoCount - 1);
+
+            var undoState = _undoStates[_undoIndex];
+            undoState.Rollback(MainRenderer);
+
+            // _undoState.Write(MainRenderer);
+            return;
+        }
+
         if (_rendererIndex >= _lineRenderers.Count)
         {
             Debug.LogWarning("Renderer index out of range, reuse the shortest & oldest line.");
@@ -111,6 +151,7 @@ public class MouseDrawer : MonoBehaviour
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
+#if UNITY_EDITOR
             var lineSerializer = new LineSerializer();
             var points = new List<Vector2Int> { new(0, 0), new(2, 0), new(1, 1) };
             var lineData = new LineData
@@ -126,6 +167,7 @@ public class MouseDrawer : MonoBehaviour
 
             // Debug.Log($"mouse position (world): {mousePositionWorld}; actual: {Mouse.current.position.value}");
             return;
+#endif
         }
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -145,15 +187,30 @@ public class MouseDrawer : MonoBehaviour
 
             if (IsLineRendererValid(_tempLineRenderer))
             {
+                _undoStates[_undoIndex].Record(MainRenderer);
+
+                _undoIndex = (_undoIndex + 1) % MaxUndoCount;
+                _undoCount = Mathf.Min(_undoCount + 1, MaxUndoCount);
+
+                // _undoState.Read(MainRenderer);
                 Debug.Log($"created line.");
 
                 var isNewLine = ProcessNewLine(_tempLineRenderer);
                 if (isNewLine)
                 {
-                    var lineRenderer = _lineRenderers[_rendererIndex];
-                    lineRenderer.SetPosition(0, _tempLineRenderer.GetPosition(0));
-                    lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
-                    _rendererIndex++;
+                    if (IsNewLineAllowed)
+                    {
+                        var lineRenderer = _lineRenderers[_rendererIndex];
+                        lineRenderer.SetPosition(0, _tempLineRenderer.GetPosition(0));
+                        lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
+
+                        // force single line
+                        // _rendererIndex++;
+                    }
+                    else
+                    {
+                        Debug.LogWarning("NEW LINE NOT ALLOWED.");
+                    }
                 }
 
                 ResetLineRenderer(_tempLineRenderer);
@@ -309,7 +366,7 @@ public class MouseDrawer : MonoBehaviour
         return mousePositionWorldGrid;
     }
 
-    private void Clear()
+    public void Clear()
     {
         foreach (var lineRenderer in _lineRenderers)
         {
@@ -319,5 +376,55 @@ public class MouseDrawer : MonoBehaviour
         ResetLineRenderer(_tempLineRenderer);
         InitializeLineRenderers();
         _rendererIndex = 0;
+        // IsNewLineAllowed = true;
+        // _undoState.Reset();
+
+        foreach (var undoState in _undoStates)
+        {
+            undoState.Reset();
+        }
+    }
+
+    private sealed class UndoState
+    {
+        public bool WasLoop;
+        public int PositionCount;
+        public List<Vector3> Positions;
+
+        public void Record(LineRenderer lineRenderer)
+        {
+            PositionCount = lineRenderer.positionCount;
+            WasLoop = lineRenderer.loop;
+
+            var elementsToAdd = Mathf.Max(0, PositionCount - Positions.Count);
+            for (var i = 0; i < elementsToAdd; i++)
+            {
+                Positions.Add(Vector3.zero);
+            }
+
+            for (var i = 0; i < lineRenderer.positionCount; i++)
+            {
+                Positions[i] = lineRenderer.GetPosition(i);
+            }
+        }
+
+        public void Rollback(LineRenderer lineRenderer)
+        {
+            lineRenderer.loop = WasLoop;
+            lineRenderer.positionCount = PositionCount;
+            for (var i = 0; i < lineRenderer.positionCount; i++)
+            {
+                lineRenderer.SetPosition(i, Positions[i]);
+            }
+        }
+
+        public void Reset()
+        {
+            PositionCount = 2;
+            for (var i = 0; i < Positions.Count; i++)
+            {
+                Positions[i] = Vector3.zero;
+            }
+        }
     }
 }
