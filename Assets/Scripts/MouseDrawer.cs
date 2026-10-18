@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -23,7 +24,8 @@ public class MouseDrawer : MonoBehaviour
     [SerializeField] private float _tolerance = 0.01f;
 
     // [SerializeField] private Vector2 _clamp = new Vector2(9.6f, 7.2f);
-    [SerializeField] private float _clamp = 0.1f;
+    [SerializeField] private GameData _gameData;
+    // [SerializeField] private float _clamp = 0.1f;
     private Vector2 _clampMin;
     private Vector2 _clampMax;
 
@@ -35,6 +37,7 @@ public class MouseDrawer : MonoBehaviour
     private List<Vector3[]> _linePoints;
     private int _rendererIndex;
     private Camera _camera;
+    private ScreenData _screenData;
 
     public int Resolution => _resolution;
 
@@ -44,7 +47,7 @@ public class MouseDrawer : MonoBehaviour
         set => _cursor.gameObject.SetActive(value);
     }
 
-    public bool IsInputEnabled { get; set; }
+    public bool IsInputEnabled { get; set; } = true;
 
     private void Awake()
     {
@@ -53,11 +56,13 @@ public class MouseDrawer : MonoBehaviour
         InitializeLineRenderers();
 
         _camera = Camera.main;
-        _unitHeight = Screen.height / _resolution;
+        _unitHeight = _gameData.GetUnitHeight(Screen.height);
 
         // clamp=0.1f -> screen [0.1-0.9] of the actual values
-        _clampMin = new Vector2(Screen.width * _clamp, Screen.height * _clamp);
-        _clampMax = new Vector2(Screen.width * (1f - _clamp), Screen.height * (1f - _clamp));
+        _clampMin = _gameData.GetClampMin(Screen.width, Screen.height);
+        _clampMax = _gameData.GetClampMax(Screen.width, Screen.height);
+
+        _screenData = _gameData.DefaultScreenData;
     }
 
     private void InitializeLineRenderers()
@@ -106,7 +111,20 @@ public class MouseDrawer : MonoBehaviour
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            Debug.Log($"mouse position (world): {mousePositionWorld}; actual: {Mouse.current.position.value}");
+            var lineSerializer = new LineSerializer();
+            var points = new List<Vector2Int> { new(0, 0), new(2, 0), new(1, 1) };
+            var lineData = new LineData
+            {
+                IsLoop = false,
+                Points = points
+            };
+
+            lineSerializer.BuildLine(lineData, _camera, _lineRenderers[^1], _screenData);
+
+            var point = lineSerializer.WorldToPoint(_lineRenderers[^1].GetPosition(1), _camera, _screenData);
+            Debug.Log($"point: {point}");
+
+            // Debug.Log($"mouse position (world): {mousePositionWorld}; actual: {Mouse.current.position.value}");
             return;
         }
 
@@ -137,10 +155,8 @@ public class MouseDrawer : MonoBehaviour
                     lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
                     _rendererIndex++;
                 }
-                else
-                {
-                    ResetLineRenderer(_tempLineRenderer);
-                }
+
+                ResetLineRenderer(_tempLineRenderer);
             }
         }
     }
@@ -300,6 +316,7 @@ public class MouseDrawer : MonoBehaviour
             Destroy(lineRenderer.gameObject);
         }
 
+        ResetLineRenderer(_tempLineRenderer);
         InitializeLineRenderers();
         _rendererIndex = 0;
     }

@@ -9,9 +9,21 @@ public class TextDrawer : MonoBehaviour
 
     private Awaitable _currentRevealTask;
 
-    public void PrintText(string text)
+    public void ClearText()
     {
+        CancelCurrentRevealTask();
+        _tmpText.text = "";
+    }
+
+    public void PrintText(string text, float duration = 0)
+    {
+        CancelCurrentRevealTask();
         _tmpText.text = text;
+
+        if (duration > 0)
+        {
+            Reveal();
+        }
     }
 
     [ContextMenu("Reveal")]
@@ -19,12 +31,17 @@ public class TextDrawer : MonoBehaviour
     {
         var totalDuration = _tmpText.text.Length * _revealDurationPerChar;
 
+        CancelCurrentRevealTask();
+        _currentRevealTask = RevealTextAsync(totalDuration);
+    }
+
+    private void CancelCurrentRevealTask()
+    {
         if (_currentRevealTask != null)
         {
             _currentRevealTask.Cancel();
             _currentRevealTask = null;
         }
-        _currentRevealTask = RevealTextAsync(totalDuration);
     }
 
     private async Awaitable RevealTextAsync(float duration = 0)

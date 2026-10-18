@@ -1,9 +1,10 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.InputSystem;
 
 public sealed class KeyboardMovement : MonoBehaviour
 {
+    [SerializeField] private GameData _gameData;
     [SerializeField] private float _speed = 5f;
     [SerializeField] private Transform _target;
     [SerializeField] private float _throttle = 0.2f;
@@ -11,18 +12,22 @@ public sealed class KeyboardMovement : MonoBehaviour
 
     private float _moveTimer;
     private Vector2 _input;
+    private Camera _camera;
     private Transform _cameraTransform;
     private float _timerMin;
 
     private void Awake()
     {
-        _cameraTransform = Camera.main.transform;
+        _camera = Camera.main;
+        Assert.IsNotNull(_camera);
+
+        _cameraTransform = _camera.transform;
         _timerMin = -_throttle / 2;
     }
 
     private void Update()
     {
-        _speed = Camera.main.orthographicSize / FindAnyObjectByType<MouseDrawer>().Resolution * 2;
+        _speed = _camera.orthographicSize / _gameData.Resolution * 2;
         _input = GetWasdInput();
 
         if (_input == Vector2.zero)
