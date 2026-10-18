@@ -1,47 +1,62 @@
-﻿using TMPro;
+﻿using System.Threading;
+using TMPro;
 using UnityEngine;
 
 public class TextDrawer : MonoBehaviour
 {
     [SerializeField] private TMP_Text _tmpText;
+    [SerializeField] private GameObject _textFrame;
+    [SerializeField] private GameObject _textBackground;
     [SerializeField] private float _revealDurationPerChar;
     [SerializeField] private string _revealTextDebug;
 
-    private Awaitable _currentRevealTask;
+    private CancellationTokenSource _cts;
 
     public void ClearText()
     {
         CancelCurrentRevealTask();
         _tmpText.text = "";
+        ToggleObjects(false);
     }
 
-    public void PrintText(string text, float duration = 0)
+    private void ToggleObjects(bool state)
+    {
+        // _textFrame.SetActive(state);
+        _textBackground.SetActive(state);
+        _tmpText.gameObject.SetActive(state);
+    }
+
+    // public void PrintText(string text, bool revealOverTime = true)
+    // {
+    //     PrintTextAsync(text, revealOverTime).LogExceptionsAndForget();
+    // }
+
+    public async Awaitable PrintTextAsync(string text, bool revealOverTime = true)
     {
         CancelCurrentRevealTask();
         _tmpText.text = text;
+        ToggleObjects(true);
 
-        if (duration > 0)
+        if (revealOverTime)
         {
-            Reveal();
+            var totalDuration = _tmpText.text.Length * _revealDurationPerChar;
+            _cts = new CancellationTokenSource();
+            await RevealTextAsync(totalDuration);
         }
     }
 
-    [ContextMenu("Reveal")]
-    public void Reveal()
-    {
-        var totalDuration = _tmpText.text.Length * _revealDurationPerChar;
-
-        CancelCurrentRevealTask();
-        _currentRevealTask = RevealTextAsync(totalDuration);
-    }
+    // [ContextMenu("Reveal")]
+    // public void Reveal()
+    // {
+    //     var totalDuration = _tmpText.text.Length * _revealDurationPerChar;
+    //
+    //     CancelCurrentRevealTask();
+    //     RevealTextAsync(totalDuration);
+    // }
 
     private void CancelCurrentRevealTask()
     {
-        if (_currentRevealTask != null)
-        {
-            _currentRevealTask.Cancel();
-            _currentRevealTask = null;
-        }
+        _cts?.Cancel();
     }
 
     private async Awaitable RevealTextAsync(float duration = 0)

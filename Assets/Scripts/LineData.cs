@@ -56,8 +56,35 @@ public sealed class LineData
         var pairs = new HashSet<(Vector2Int p0, Vector2Int p1)>();
         for (var i = 0; i < Points.Count - 1; i++)
         {
-            pairs.Add((Points[i], Points[i + 1]));
+            // ensure stable ordering
+            if (Points[i].sqrMagnitude < Points[i + 1].sqrMagnitude)
+            {
+                pairs.Add((Points[i], Points[i + 1]));
+            }
+            else
+            {
+                pairs.Add((Points[i + 1], Points[i]));
+            }
         }
+
+        var otherPairs = new HashSet<(Vector2Int p0, Vector2Int p1)>();
+        for (var i = 0; i < other.Points.Count - 1; i++)
+        {
+            // ensure stable ordering
+            if (other.Points[i].sqrMagnitude < other.Points[i + 1].sqrMagnitude)
+            {
+                otherPairs.Add((other.Points[i], other.Points[i + 1]));
+            }
+            else
+            {
+                otherPairs.Add((other.Points[i + 1], other.Points[i]));
+            }
+        }
+
+        pairs.ExceptWith(otherPairs);
+
+        return pairs.Count == 0;
+
 
         for (var i = 0; i < other.Points.Count - 1; i++)
         {

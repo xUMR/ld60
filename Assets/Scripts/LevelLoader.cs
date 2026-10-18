@@ -10,6 +10,10 @@ public class LevelLoader : MonoBehaviour
     private LevelData _loadedLevelData;
     private int _loadedLevelIndex = -1;
 
+    public int CurrentLevel => _loadedLevelIndex;
+
+    public LevelData CurrentLevelData => _loadedLevelData;
+
     public void LoadPrevLevel() => LoadLevel(_loadedLevelIndex - 1);
     public void LoadNextLevel() => LoadLevel(_loadedLevelIndex + 1);
 
@@ -44,6 +48,12 @@ public class LevelLoader : MonoBehaviour
         var expectedLineData = _loadedLevelData.LineData;
 
         // held together by actual tape
-        return actualLineData.Matches(expectedLineData) || expectedLineData.Matches(actualLineData);
+        var actualMatchesExpected = actualLineData.Matches(expectedLineData);
+        var expectedMatchesActual = expectedLineData.Matches(actualLineData);
+
+        Debug.Log($"Actual matches expected: {actualMatchesExpected}");
+        Debug.Log($"Expected matches actual: {expectedMatchesActual}");
+
+        return actualMatchesExpected || expectedMatchesActual;
     }
 }

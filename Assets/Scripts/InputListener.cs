@@ -3,8 +3,24 @@ using UnityEngine.InputSystem;
 
 public sealed class InputListener : MonoBehaviour
 {
-    public bool InputEnabled = true;
+    public bool InputEnabled { get; private set; } = true;
 
+    private void Start()
+    {
+        GameEvents.InputStateChangeRequested += HandleInputStateChangeRequested;
+    }
+
+    private void OnDestroy()
+    {
+        GameEvents.InputStateChangeRequested -= HandleInputStateChangeRequested;
+    }
+
+    private void HandleInputStateChangeRequested(bool isEnabled)
+    {
+        InputEnabled = isEnabled;
+    }
+
+    // todo use input system instead of polling for input
     private void Update()
     {
         if (!InputEnabled)
@@ -33,16 +49,22 @@ public sealed class InputListener : MonoBehaviour
         {
             // clear drawn lines
         }
-
+#if UNITY_EDITOR
         if (keyboard.spaceKey.wasPressedThisFrame)
         {
             // for debugging
         }
+#endif
 
         if (keyboard.enterKey.wasPressedThisFrame)
         {
             // check level end
             GameEvents.Invoke.LevelCheckRequested();
+        }
+
+        if (keyboard.ctrlKey.isPressed && keyboard.shiftKey.isPressed && keyboard.xKey.wasPressedThisFrame)
+        {
+            GameEvents.Invoke.PlayerDataDeleteRequested();
         }
 
         var mouse = Mouse.current;

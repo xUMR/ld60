@@ -34,6 +34,7 @@ public class MouseDrawer : MonoBehaviour
     [SerializeField] private LineRenderer _tempLineRenderer;
     [SerializeField] private List<LineRenderer> _lineRenderers;
     [SerializeField] private Transform _cursor;
+    [SerializeField] private InputListener _inputListener;
 
     // private List<Vector3[]> _linePoints;
     private int _rendererIndex;
@@ -57,7 +58,7 @@ public class MouseDrawer : MonoBehaviour
         set => _cursor.gameObject.SetActive(value);
     }
 
-    public bool IsInputEnabled { get; set; } = true;
+    public bool IsInputEnabled => _inputListener.InputEnabled;
 
     public LineRenderer MainRenderer => _lineRenderers[0];
 
