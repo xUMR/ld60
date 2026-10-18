@@ -135,7 +135,7 @@ public class MouseDrawer : MonoBehaviour
             var undoState = _undoStates[_undoIndex];
             undoState.Rollback(MainRenderer);
 
-            // _undoState.Write(MainRenderer);
+            GameEvents.Invoke.LineUndoPerformed();
             return;
         }
 
@@ -174,6 +174,7 @@ public class MouseDrawer : MonoBehaviour
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             _tempLineRenderer.SetPosition(0, mousePositionWorld);
+            GameEvents.Invoke.LineStarted();
             Debug.Log($"mouse pressed: {mousePositionWorld}");
         }
 
@@ -203,18 +204,21 @@ public class MouseDrawer : MonoBehaviour
                         lineRenderer.SetPosition(1, _tempLineRenderer.GetPosition(1));
 
                         willRecordUndo = true;
+                        GameEvents.Invoke.LineCompleted(true);
 
                         // force single line
                         // _rendererIndex++;
                     }
                     else
                     {
+                        GameEvents.Invoke.LineCompleted(false);
                         Debug.LogWarning("NEW LINE NOT ALLOWED.");
                     }
                 }
                 else
                 {
                     willRecordUndo = true;
+                    GameEvents.Invoke.LineCompleted(true);
                 }
 
                 if (willRecordUndo)

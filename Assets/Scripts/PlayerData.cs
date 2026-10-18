@@ -16,7 +16,7 @@ public sealed class PlayerData
     {
         get
         {
-            for (var i = 0; i < 12; i++)
+            for (var i = 0; i <= 10; i++)
                 if (!HasCompletedLevel(i))
                     return i;
 

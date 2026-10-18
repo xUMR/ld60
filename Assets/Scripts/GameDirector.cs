@@ -53,13 +53,23 @@ public class GameDirector : MonoBehaviour
 
             GameEvents.Invoke.NextLevelRequested();
         }
+        else if (_playerData.HasCompletedAllLevels)
+        {
+            await _textDrawer.PrintTextAsync(
+                "Welcome back to LDR -\n" +
+                "Linear Data Recovery\n\n" +
+                "You may retry your previous tasks.");
+            await Awaitable.WaitForSecondsAsync(0.4f);
+
+            GameEvents.Invoke.LevelRequested(0);
+        }
         else
         {
             await _textDrawer.PrintTextAsync(
                 "Welcome back to LDR -\n" +
                 "Linear Data Recovery\n\n" +
                 "Your next task is ready.");
-            await Awaitable.WaitForSecondsAsync(1.2f);
+            await Awaitable.WaitForSecondsAsync(0.4f);
 
             GameEvents.Invoke.LevelRequested(_playerData.FirstIncompleteLevel);
         }
@@ -69,7 +79,7 @@ public class GameDirector : MonoBehaviour
             "Recover:\n" +
             $"{_levelLoader.CurrentLevelData.Hint}\n\n"+
             "Press Enter when the task\n" +
-            "is complete.\n\n\n\n\n\n" +
+            "is completed.\n\n\n\n\n\n" +
             "Press any key to continue.");
     }
 
@@ -142,6 +152,12 @@ public class GameDirector : MonoBehaviour
             {
                 CongratulatePlayerThenLoadNextLevelAsync(isLevelClearedFirstTime).LogExceptionsAndForget();
             }
+
+            GameEvents.Invoke.LevelCompleted(true);
+        }
+        else
+        {
+            GameEvents.Invoke.LevelCompleted(false);
         }
     }
 
@@ -151,7 +167,9 @@ public class GameDirector : MonoBehaviour
 
         await _textDrawer.PrintTextAsync(
             "You managed to recover all the items.\n" +
-            "Thank you for your effort.\n");
+            "Thank you for your effort.\n\n\n" +
+            "You will be notified when\n" +
+            "there is a new task.");
 
         await Awaitable.WaitForSecondsAsync(1.2f);
 
@@ -175,7 +193,9 @@ public class GameDirector : MonoBehaviour
 
         await _textDrawer.PrintTextAsync(
             "Recover:\n" +
-            $"{_levelLoader.CurrentLevelData.Hint}\n\n\n\n\n\n\n\n\n" +
+            $"{_levelLoader.CurrentLevelData.Hint}\n\n"+
+            "Press Enter when the task\n" +
+            "is completed.\n\n\n\n\n\n" +
             "Press any key to continue.");
     }
 

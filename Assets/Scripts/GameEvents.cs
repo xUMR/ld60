@@ -8,7 +8,13 @@ public static class GameEvents
     public static event Action<int> LevelRequested;
 
     public static event Action LevelCheckRequested;
-    public static event Action LevelCompleted;
+    public static event Action<bool> LevelCompleted;
+
+    public static event Action LineStarted;
+    public static event Action<bool> LineCompleted;
+    public static event Action LineUndoPerformed;
+
+    public static event Action ClickRequested; // text reveal
 
     public static event Action PlayerDataUpdateRequested;
     public static event Action PlayerDataDeleteRequested;
@@ -24,6 +30,13 @@ public static class GameEvents
         public static void LevelRequested(int level) => GameEvents.LevelRequested?.Invoke(level);
 
         public static void LevelCheckRequested() => GameEvents.LevelCheckRequested?.Invoke();
+        public static void LevelCompleted(bool result) => GameEvents.LevelCompleted?.Invoke(result);
+
+        public static void LineStarted() => GameEvents.LineStarted?.Invoke();
+        public static void LineCompleted(bool result) => GameEvents.LineCompleted?.Invoke(result);
+        public static void LineUndoPerformed() => GameEvents.LineUndoPerformed?.Invoke();
+        public static void ClickRequested() => GameEvents.ClickRequested?.Invoke();
+
         public static void PlayerDataUpdateRequested() => GameEvents.PlayerDataUpdateRequested?.Invoke();
         public static void PlayerDataDeleteRequested() => GameEvents.PlayerDataDeleteRequested?.Invoke();
         public static void AnyKeyPressed() => GameEvents.AnyKeyPressed?.Invoke();

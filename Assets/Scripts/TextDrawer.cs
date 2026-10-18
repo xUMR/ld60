@@ -85,6 +85,15 @@ public class TextDrawer : MonoBehaviour
             for (var t = 0f; t < 1; t += Time.deltaTime / duration)
             {
                 var visibleCharacterCount = Mathf.RoundToInt(Mathf.Lerp(0, textLength, t));
+                var isVisibleCharacterRevealed =
+                    visibleCharacterCount != _tmpText.maxVisibleCharacters &&
+                    !char.IsWhiteSpace(_tmpText.text[visibleCharacterCount - 1]);
+
+                if (isVisibleCharacterRevealed)
+                {
+                    GameEvents.Invoke.ClickRequested();
+                }
+
                 _tmpText.maxVisibleCharacters = visibleCharacterCount;
 
                 await Awaitable.NextFrameAsync(_cts.Token);
