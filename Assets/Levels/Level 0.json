@@ -1,5 +1,11 @@
 ﻿{
   "Hint": "Fish",
+  "LineSegments": [
+    { "Start": { "x": 17, "y": 10 }, "End": { "x": 18, "y": 11 } },
+    { "Start": { "x": 18, "y": 11 }, "End": { "x": 19, "y": 12 } },
+    { "Start": { "x": 17, "y": 14 }, "End": { "x": 18, "y": 13 } },
+    { "Start": { "x": 18, "y": 13 }, "End": { "x": 19, "y": 12 } }
+  ],
   "AuxLineData": {
     "IsLoop": false,
     "Points": [

@@ -136,11 +136,6 @@ public class GameDirector : MonoBehaviour
         {
             var isLevelClearedFirstTime = !_playerData.HasCompletedLevel(_levelLoader.CurrentLevel);
 
-            if (_levelCollection.LevelAssets.Length == _levelLoader.CurrentLevel + 1)
-            {
-                _playerData.HasCompletedAllLevels = true;
-            }
-
             _playerData.Progress |= 1 << _levelLoader.CurrentLevel;
             UpdatePlayerData(_playerData);
 
@@ -188,7 +183,7 @@ public class GameDirector : MonoBehaviour
         await _textDrawer.PrintTextAsync(message);
         await Awaitable.WaitForSecondsAsync(0.4f);
 
-        GameEvents.Invoke.NextLevelRequested();
+        GameEvents.Invoke.LevelRequested(_playerData.FirstIncompleteLevel);
         GameEvents.Invoke.InputStateChangeRequested(InputState.AnyKeyToProceed);
 
         await _textDrawer.PrintTextAsync(

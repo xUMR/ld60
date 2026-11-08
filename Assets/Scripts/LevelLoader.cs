@@ -40,19 +40,8 @@ public class LevelLoader : MonoBehaviour
 
     public bool Check()
     {
-        var actualLineData = _gameData.DefaultLineSerializer.GetLineData(
-            _mouseDrawer.MainRenderer,
-            _gameData.DefaultCamera,
-            _gameData.DefaultScreenData);
-
-        var expectedLineData = _loadedLevelData.LineData;
-
-        var actualMatchesExpected = actualLineData.Matches(expectedLineData);
-        var expectedMatchesActual = expectedLineData.Matches(actualLineData);
-
-        Debug.Log($"Actual matches expected: {actualMatchesExpected}");
-        Debug.Log($"Expected matches actual: {expectedMatchesActual}");
-
-        return actualMatchesExpected || expectedMatchesActual;
+        var actualLines = _mouseDrawer.LineSubSegmentSet;
+        var expectedLines = _loadedLevelData.LineSegments;
+        return actualLines.SetEquals(expectedLines);
     }
 }

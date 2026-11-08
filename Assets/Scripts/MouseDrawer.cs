@@ -46,6 +46,8 @@ public class MouseDrawer : MonoBehaviour
     private int _undoIndex;
     private int _undoCount; // remaining undo count
 
+    public HashSet<LineSegment> LineSubSegmentSet { get; private set; }
+
     // force single line
     private bool IsNewLineAllowed =>
         MainRenderer.positionCount == 2 && MainRenderer.GetPosition(0) == MainRenderer.GetPosition(1);
@@ -62,11 +64,14 @@ public class MouseDrawer : MonoBehaviour
 
     public LineRenderer MainRenderer => _lineRenderers[0];
 
+    private LineSerializer DefaultLineSerializer => _gameData.DefaultLineSerializer;
+
     private void Awake()
     {
         Cursor.visible = false;
 
         InitializeLineRenderers();
+        LineSubSegmentSet = new HashSet<LineSegment>();
 
         _camera = Camera.main;
         _unitHeight = _gameData.GetUnitHeight(Screen.height);
@@ -133,7 +138,7 @@ public class MouseDrawer : MonoBehaviour
             _undoCount = Mathf.Max(0, _undoCount - 1);
 
             var undoState = _undoStates[_undoIndex];
-            undoState.Rollback(MainRenderer);
+            undoState.Rollback(MainRenderer, LineSubSegmentSet);
 
             GameEvents.Invoke.LineUndoPerformed();
             return;
@@ -194,7 +199,14 @@ public class MouseDrawer : MonoBehaviour
                 // _undoState.Read(MainRenderer);
                 Debug.Log($"created line.");
 
-                var isNewLine = ProcessNewLine(_tempLineRenderer);
+                var currentLineStart = _tempLineRenderer.GetPosition(0);
+                var currentLineEnd = _tempLineRenderer.GetPosition(1);
+
+                var p0 = DefaultLineSerializer.WorldToPoint(currentLineStart, _camera, _screenData);
+                var p1 = DefaultLineSerializer.WorldToPoint(currentLineEnd, _camera, _screenData);
+                var lineSegment = new LineSegment(p0, p1);
+
+                var isNewLine = ProcessNewLine(_tempLineRenderer, lineSegment);
                 if (isNewLine)
                 {
                     if (IsNewLineAllowed)
@@ -223,6 +235,9 @@ public class MouseDrawer : MonoBehaviour
 
                 if (willRecordUndo)
                 {
+                    // todo fix: line segment has to follow an index behind
+                    _undoStates[_undoIndex].LineSegment = lineSegment;
+
                     _undoIndex = (_undoIndex + 1) % MaxUndoCount;
                     _undoCount = Mathf.Min(_undoCount + 1, MaxUndoCount);
 
@@ -236,10 +251,20 @@ public class MouseDrawer : MonoBehaviour
     }
 
     // return true if it's a new line, false otherwise
-    private bool ProcessNewLine(LineRenderer lineRenderer)
+    private bool ProcessNewLine(LineRenderer lineRenderer, LineSegment lineSegment)
     {
         var currentLineStart = lineRenderer.GetPosition(0);
         var currentLineEnd = lineRenderer.GetPosition(1);
+
+        foreach (var subSegment in lineSegment.GetSubSegments())
+        {
+            var isNew = LineSubSegmentSet.Add(subSegment);
+            if (!isNew)
+            {
+                // todo maybe confusing with a bool, more states may help: new, repeat (this), continue, loop?
+                return true;
+            }
+        }
 
         // todo: check if the new line can be made just by moving a point in an old line
         // (starts or ends at a point between the two points of an old line)
@@ -247,12 +272,12 @@ public class MouseDrawer : MonoBehaviour
         // todo: try to combine if lines with multiple points can be combined?
 
         // check if the new line forms a loop with an old line
-        var lineRendererToLoop = GetLineRendererToLoop(currentLineStart, currentLineEnd);
-        if (lineRendererToLoop != null && lineRendererToLoop != lineRenderer)
-        {
-            lineRendererToLoop.loop = true;
-            return false;
-        }
+        // var lineRendererToLoop = GetLineRendererToLoop(currentLineStart, currentLineEnd);
+        // if (lineRendererToLoop != null && lineRendererToLoop != lineRenderer)
+        // {
+        //     lineRendererToLoop.loop = true;
+        //     return false;
+        // }
 
         LineRenderer lineRendererToContinue;
         // check if the new line starts at the end of another line
@@ -263,7 +288,7 @@ public class MouseDrawer : MonoBehaviour
             var newPoint = currentLineEnd;
             lineRendererToContinue.positionCount++;
             lineRendererToContinue.SetPosition(lineRendererToContinue.positionCount - 1, newPoint);
-            lineRendererToContinue.Simplify(_tolerance);
+            // lineRendererToContinue.Simplify(_tolerance);
 
             return false;
         }
@@ -276,7 +301,7 @@ public class MouseDrawer : MonoBehaviour
             var newPoint = currentLineStart;
             lineRendererToContinue.positionCount++;
             lineRendererToContinue.SetPosition(lineRendererToContinue.positionCount - 1, newPoint);
-            lineRendererToContinue.Simplify(_tolerance);
+            // lineRendererToContinue.Simplify(_tolerance);
 
             return false;
         }
@@ -390,6 +415,7 @@ public class MouseDrawer : MonoBehaviour
             Destroy(lineRenderer.gameObject);
         }
 
+        LineSubSegmentSet.Clear();
         ResetLineRenderer(_tempLineRenderer);
         InitializeLineRenderers();
         _rendererIndex = 0;
@@ -409,6 +435,7 @@ public class MouseDrawer : MonoBehaviour
         public bool WasLoop;
         public int PositionCount;
         public List<Vector3> Positions;
+        public LineSegment LineSegment;
 
         public void Record(LineRenderer lineRenderer)
         {
@@ -427,8 +454,13 @@ public class MouseDrawer : MonoBehaviour
             }
         }
 
-        public void Rollback(LineRenderer lineRenderer)
+        public void Rollback(LineRenderer lineRenderer, HashSet<LineSegment> lineSubSegmentSet)
         {
+            foreach (var lineSegment in LineSegment.GetSubSegments())
+            {
+                lineSubSegmentSet.Remove(lineSegment);
+            }
+
             lineRenderer.loop = WasLoop;
             lineRenderer.positionCount = PositionCount;
             for (var i = 0; i < lineRenderer.positionCount; i++)
@@ -439,6 +471,8 @@ public class MouseDrawer : MonoBehaviour
 
         public void Reset()
         {
+            WasLoop = false;
+            LineSegment = default;
             PositionCount = 2;
             for (var i = 0; i < Positions.Count; i++)
             {
