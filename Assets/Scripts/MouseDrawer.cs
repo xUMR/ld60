@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public class MouseDrawer : MonoBehaviour
 {
@@ -68,7 +69,8 @@ public class MouseDrawer : MonoBehaviour
 
     private void Awake()
     {
-        Cursor.visible = false;
+        // doesn't work in webgl
+        // Cursor.visible = false;
 
         InitializeLineRenderers();
         LineSubSegmentSet = new HashSet<LineSegment>();
@@ -390,6 +392,8 @@ public class MouseDrawer : MonoBehaviour
     private Vector2 GetMousePositionWorldGrid(int roundTo = 0)
     {
         var mouseScreenPosition = Mouse.current.position.ReadValue();
+        mouseScreenPosition = Undistort(mouseScreenPosition);
+
         mouseScreenPosition.x = Mathf.Clamp(mouseScreenPosition.x, _clampMin.x, _clampMax.x);
         mouseScreenPosition.y = Mathf.Clamp(mouseScreenPosition.y, _clampMin.y, _clampMax.y);
 
@@ -406,6 +410,23 @@ public class MouseDrawer : MonoBehaviour
         // mousePositionWorldGrid.x = Mathf.Clamp(mousePositionWorldGrid.x, -_clamp.x, _clamp.x);
         // mousePositionWorldGrid.y = Mathf.Clamp(mousePositionWorldGrid.y, -_clamp.y, _clamp.y);
         return mousePositionWorldGrid;
+    }
+
+    private Vector2 Undistort(Vector2 input)
+    {
+        var width = Screen.width;
+        var height = Screen.height;
+        const float zoomFactor = 1.2f;
+
+        var xo = input.x / width - 0.5f;
+        var yo = input.y / height - 0.5f;
+
+        var factor = 0.5f * (xo * xo) * (yo * yo) + 0.7f;
+
+        var xi = factor * xo * zoomFactor;
+        var yi = factor * yo * zoomFactor;
+
+        return new Vector2((xi + 0.5f) * width, (yi + 0.5f) * height);
     }
 
     public void Clear()
